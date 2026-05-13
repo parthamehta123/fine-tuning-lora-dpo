@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install ruff
+      - name: Lint
+        run: ruff check src/ tests/
+      - name: Format check
+        run: ruff format --check src/ tests/
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+      - name: Run tests
+        run: pytest tests/ -v --cov=src --cov-report=term-missing
+
+  validate-configs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install pyyaml pydantic
+      - name: Validate training configs
+        run: |
+          python -c "
+          import yaml
+          for f in ['configs/sft_config.yaml', 'configs/dpo_config.yaml']:
+              with open(f) as fh:
+                  cfg = yaml.safe_load(fh)
+              assert 'model' in cfg and 'training' in cfg, f'{f} missing required keys'
+              print(f'{f}: valid')
+          "
+
+  data-prep:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: pip install pydantic
+      - name: Validate data preparation
+        run: python src/prepare_data.py
+      - name: Check generated files
+        run: |
+          test -f data/sft_train.jsonl && echo "sft_train.jsonl exists"
+          test -f data/sft_eval.jsonl && echo "sft_eval.jsonl exists"
+          test -f data/dpo_train.jsonl && echo "dpo_train.jsonl exists"
+          test -f data/dpo_eval.jsonl && echo "dpo_eval.jsonl exists"
