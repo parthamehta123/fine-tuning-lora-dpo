@@ -1,20 +1,27 @@
+# DPO Preference Optimization Config
+# Stacks on top of SFT checkpoint
+# Trains model to prefer correct function calls over incorrect ones
+
 model:
   sft_checkpoint: "models/sft-lora"
   load_in_4bit: true
 
 dpo:
-  beta: 0.1
-  loss_type: "sigmoid"
+  beta: 0.1                # KL penalty coefficient (lower = more aggressive optimization)
+  loss_type: "sigmoid"     # sigmoid (standard DPO) or hinge
 
 training:
-  num_epochs: 1
+  num_epochs: 1            # DPO typically needs fewer epochs
   per_device_train_batch_size: 2
   gradient_accumulation_steps: 8
-  learning_rate: 5.0e-5
+  learning_rate: 5.0e-5    # Lower LR for DPO to avoid forgetting SFT gains
   warmup_ratio: 0.1
+  weight_decay: 0.01
   max_seq_length: 2048
   logging_steps: 10
   save_steps: 50
+  lr_scheduler_type: "cosine"
+  bf16: true
 
 data:
   train_path: "data/dpo_train.jsonl"

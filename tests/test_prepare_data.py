@@ -2,24 +2,51 @@
 
 import json
 
-from src.prepare_data import create_dpo_examples, create_sft_examples, save_jsonl
+from src.prepare_data import (
+    create_function_calling_dpo_examples,
+    create_function_calling_sft_examples,
+    save_jsonl,
+)
 
 
 def test_sft_examples_format():
-    examples = create_sft_examples()
-    assert len(examples) >= 1
+    examples = create_function_calling_sft_examples()
+    assert len(examples) >= 10
     for ex in examples:
         assert "instruction" in ex
         assert "input" in ex
         assert "output" in ex
-        # Output should be valid JSON
         parsed = json.loads(ex["output"])
         assert isinstance(parsed, dict)
+        assert "function" in parsed
+
+
+def test_sft_examples_cover_all_functions():
+    examples = create_function_calling_sft_examples()
+    functions_seen = {json.loads(ex["output"])["function"] for ex in examples}
+    expected = {
+        "get_stock_price",
+        "get_financial_report",
+        "calculate_ratio",
+        "search_sec_filings",
+        "convert_currency",
+        "NONE",
+    }
+    assert expected == functions_seen
+
+
+def test_sft_examples_include_refusals():
+    examples = create_function_calling_sft_examples()
+    refusals = [ex for ex in examples if json.loads(ex["output"])["function"] == "NONE"]
+    assert len(refusals) >= 2
+    for r in refusals:
+        parsed = json.loads(r["output"])
+        assert "reason" in parsed
 
 
 def test_dpo_examples_format():
-    examples = create_dpo_examples()
-    assert len(examples) >= 1
+    examples = create_function_calling_dpo_examples()
+    assert len(examples) >= 5
     for ex in examples:
         assert "prompt" in ex
         assert "chosen" in ex
@@ -28,8 +55,6 @@ def test_dpo_examples_format():
         rejected = json.loads(ex["rejected"])
         assert isinstance(chosen, dict)
         assert isinstance(rejected, dict)
-        # Chosen should have more fields than rejected
-        assert len(chosen) >= len(rejected)
 
 
 def test_save_jsonl(tmp_path):

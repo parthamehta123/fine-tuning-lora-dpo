@@ -1,6 +1,21 @@
 # Fine-Tuning with LoRA & DPO
 
-Fine-tune small language models for structured JSON extraction and tool-calling using LoRA/QLoRA for supervised fine-tuning and DPO for preference-based alignment.
+Fine-tune small language models for **financial function-calling** using LoRA/QLoRA for supervised fine-tuning and DPO for preference-based alignment.
+
+## Dataset
+
+- **Function-Calling (Custom)**: 20 hand-crafted financial tool-calling examples covering stock prices, SEC filings, ratio calculations, currency conversion, and proper refusal
+- **Function-Calling (Glaive)**: [glaiveai/glaive-function-calling-v2](https://huggingface.co/datasets/glaiveai/glaive-function-calling-v2) — 113K examples for full-scale training
+- **DPO Pairs**: 8 chosen/rejected pairs comparing correct vs incorrect function calls
+
+## LoRA vs QLoRA
+
+| Method | Precision | VRAM Needed | Config |
+|--------|-----------|-------------|--------|
+| **QLoRA** | 4-bit (NF4) | ~6GB (T4/A10) | `configs/sft_config.yaml` |
+| **LoRA** | 16-bit (bf16) | ~16GB (A100) | `configs/sft_lora_fullprecision.yaml` |
+
+Both configs target the same layers (attention + MLP projections) with identical hyperparameters for fair comparison. QLoRA uses `bitsandbytes` NF4 quantization with double quantization enabled.
 
 ## Features
 

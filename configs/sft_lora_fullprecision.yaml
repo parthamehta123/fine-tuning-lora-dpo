@@ -1,0 +1,42 @@
+# LoRA (Full Precision) Config - for comparison with QLoRA
+# Requires ~16GB VRAM (A100, A6000, or similar)
+# Use this to measure quality difference vs QLoRA
+
+model:
+  name: "Qwen/Qwen3-8B"
+  load_in_4bit: false       # Standard LoRA, no quantization
+
+lora:
+  r: 16
+  lora_alpha: 32
+  lora_dropout: 0.05
+  target_modules:
+    - "q_proj"
+    - "v_proj"
+    - "k_proj"
+    - "o_proj"
+    - "gate_proj"
+    - "up_proj"
+    - "down_proj"
+
+training:
+  num_epochs: 3
+  per_device_train_batch_size: 2   # Smaller batch due to higher VRAM usage
+  gradient_accumulation_steps: 8   # Effective batch size = 2 * 8 = 16
+  learning_rate: 2.0e-4
+  warmup_ratio: 0.1
+  weight_decay: 0.01
+  max_seq_length: 2048
+  logging_steps: 10
+  save_steps: 100
+  eval_steps: 50
+  lr_scheduler_type: "cosine"
+  bf16: true
+
+data:
+  train_path: "data/sft_train.jsonl"
+  eval_path: "data/sft_eval.jsonl"
+  format: "instruction"
+
+output:
+  dir: "models/sft-lora-fullprecision"
