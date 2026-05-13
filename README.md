@@ -53,6 +53,7 @@ Both configs target the same layers (attention + MLP projections) with identical
 python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
+pip install -e .
 ```
 
 ## Usage
