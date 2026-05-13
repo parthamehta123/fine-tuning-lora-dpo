@@ -5,7 +5,7 @@ import argparse
 import torch
 import yaml
 from datasets import load_dataset
-from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
+from peft import LoraConfig, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
@@ -62,10 +62,13 @@ def main():
     )
 
     # Load dataset
-    dataset = load_dataset("json", data_files={
-        "train": config["data"]["train_path"],
-        "eval": config["data"]["eval_path"],
-    })
+    dataset = load_dataset(
+        "json",
+        data_files={
+            "train": config["data"]["train_path"],
+            "eval": config["data"]["eval_path"],
+        },
+    )
 
     def format_example(example):
         return f"### Instruction:\n{example['instruction']}\n\n### Input:\n{example['input']}\n\n### Output:\n{example['output']}"

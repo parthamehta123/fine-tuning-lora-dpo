@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError
 
 class ExtractedInfo(BaseModel):
     """Expected output schema for evaluation."""
+
     name: str | None = None
     company: str | None = None
     date: str | None = None
@@ -42,9 +43,11 @@ def evaluate_json_output(raw_output: str) -> dict:
         return metrics
 
     try:
+        if not isinstance(parsed, dict):
+            return metrics
         ExtractedInfo(**parsed)
         metrics["schema_valid"] = True
-    except ValidationError:
+    except (ValidationError, TypeError):
         pass
 
     return metrics
@@ -56,8 +59,12 @@ def run_comparison(base_results: list[str], finetuned_results: list[str]):
     print("-" * 55)
 
     for label, results in [("Base", base_results), ("Fine-Tuned", finetuned_results)]:
-        json_valid = sum(1 for r in results if evaluate_json_output(r)["json_valid"]) / len(results)
-        schema_valid = sum(1 for r in results if evaluate_json_output(r)["schema_valid"]) / len(results)
+        json_valid = sum(
+            1 for r in results if evaluate_json_output(r)["json_valid"]
+        ) / len(results)
+        schema_valid = sum(
+            1 for r in results if evaluate_json_output(r)["schema_valid"]
+        ) / len(results)
         print(f"  JSON Validity:         {json_valid:.1%}")
         print(f"  Schema Validity:       {schema_valid:.1%}")
 

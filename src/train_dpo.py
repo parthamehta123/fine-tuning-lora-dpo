@@ -5,8 +5,12 @@ import argparse
 import torch
 import yaml
 from datasets import load_dataset
-from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TrainingArguments
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    BitsAndBytesConfig,
+    TrainingArguments,
+)
 from trl import DPOTrainer
 
 
@@ -41,10 +45,13 @@ def main():
     )
 
     # Load DPO preference dataset
-    dataset = load_dataset("json", data_files={
-        "train": config["data"]["train_path"],
-        "eval": config["data"]["eval_path"],
-    })
+    dataset = load_dataset(
+        "json",
+        data_files={
+            "train": config["data"]["train_path"],
+            "eval": config["data"]["eval_path"],
+        },
+    )
 
     train_cfg = config["training"]
     training_args = TrainingArguments(
