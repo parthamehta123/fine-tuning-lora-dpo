@@ -72,15 +72,16 @@ Key concepts:
 ### Project 4: Fine-Tuning LoRA+DPO
 
 ```
-1. data/function_definitions.json     ← The 5 financial tools the model learns to call
-2. src/prepare_data.py                ← Training data format (SFT + DPO pairs)
-3. configs/sft_config.yaml            ← QLoRA config (read every comment)
-4. configs/sft_lora_fullprecision.yaml ← LoRA config (compare with QLoRA)
-5. src/train_sft.py                   ← SFT training pipeline
-6. configs/dpo_config.yaml            ← DPO config (stacks on SFT)
-7. src/train_dpo.py                   ← DPO preference training
-8. src/evaluate.py                    ← Function-calling accuracy metrics
-9. src/download_dataset.py            ← Glaive dataset downloader (113K examples)
+1. data/function_definitions.json      ← The 5 financial tools the model learns to call
+2. src/prepare_data.py                 ← Custom training data (20 SFT + 8 DPO pairs)
+3. src/download_dataset.py             ← Glaive dataset downloader + parser (extracts function calls)
+4. colab_notebook.ipynb                ← Full pipeline for Google Colab (includes data augmentation)
+5. configs/sft_config.yaml             ← QLoRA config (read every comment)
+6. configs/sft_lora_fullprecision.yaml ← LoRA config (compare with QLoRA)
+7. src/train_sft.py                    ← SFT training pipeline
+8. configs/dpo_config.yaml             ← DPO config (stacks on SFT)
+9. src/train_dpo.py                    ← DPO preference training
+10. src/evaluate.py                    ← Function-calling accuracy metrics
 ```
 
 Key concepts:
@@ -88,6 +89,8 @@ Key concepts:
 - Why target_modules includes both attention AND MLP layers
 - SFT → DPO stacking (DPO builds on SFT checkpoint)
 - Chosen vs rejected pairs for preference learning
+- Data augmentation: template-based generation of diverse training examples
+- Glaive dataset parsing: extracting `<functioncall>` tags and converting formats
 
 ### Project 5: Real-Time Voice Assistant
 
@@ -281,7 +284,14 @@ docker run -p 8501:8501 rag-observability \
 
 ### Project 4: Fine-Tuning LoRA+DPO
 
-#### Without Docker
+#### Google Colab (recommended, no local GPU needed)
+
+1. Upload the `fine-tuning-lora-dpo/` folder to Google Drive
+2. Open `colab_notebook.ipynb` in Colab
+3. Select T4 or A100 GPU runtime
+4. Run all cells — handles everything end-to-end
+
+#### Without Docker (local, needs GPU)
 
 ```bash
 cd ~/fine-tuning-lora-dpo
@@ -294,31 +304,22 @@ pip install -e .
 
 # Step 1: Prepare the local training data
 python src/prepare_data.py
-# Creates data/sft_train.jsonl, sft_eval.jsonl, dpo_train.jsonl, dpo_eval.jsonl
 
-# Step 2 (optional): Download full Glaive dataset (113K examples)
-python src/download_dataset.py --max-examples 5000
+# Step 2: Download Glaive dataset (filtered to function calls)
+python src/download_dataset.py --max-examples 10000
 
 # Step 3: Run SFT with QLoRA (needs GPU, ~6GB VRAM)
 python src/train_sft.py --config configs/sft_config.yaml
 
-# Step 4: Run SFT with LoRA full precision (needs GPU, ~16GB VRAM)
-python src/train_sft.py --config configs/sft_lora_fullprecision.yaml
-
-# Step 5: Run DPO on top of SFT checkpoint
+# Step 4: Run DPO on top of SFT checkpoint
 python src/train_dpo.py --config configs/dpo_config.yaml
 
-# Step 6: Evaluate before vs after
-python src/evaluate.py --base-model qwen3:8b --finetuned-model ./models/sft-lora
+# Step 5: Evaluate
+python src/evaluate.py --base-model Qwen/Qwen3-8B --finetuned-model ./models/sft-lora
 
 # Run tests (no GPU needed)
 pytest tests/ -v
 ```
-
-**No GPU?** Use one of these:
-- Google Colab (free T4 GPU)
-- Lambda Labs / RunPod / Vast.ai (rent A100 for ~$1/hr)
-- Fireworks AI (managed fine-tuning API)
 
 #### With Docker
 
