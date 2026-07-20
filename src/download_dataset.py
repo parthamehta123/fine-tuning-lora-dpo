@@ -35,24 +35,55 @@ def download_and_prepare(max_examples: int | None = None):
         if not chat:
             continue
 
-        # Extract user message and assistant response
-        lines = str(chat).split("\n")
+        # Extract user message and first assistant function call
+        # Glaive v2 format uses "USER:" and "ASSISTANT:" prefixes,
+        # separated by <|endoftext|> tokens. Function calls are wrapped
+        # in <functioncall> tags.
+        chat_str = str(chat)
+
+        # Split on common turn delimiters
         user_msg = ""
         assistant_msg = ""
 
-        for line in lines:
-            line = line.strip()
-            if line.startswith("USER:"):
-                user_msg = line[5:].strip()
-            elif line.startswith("ASSISTANT:"):
-                assistant_msg = line[10:].strip()
-                # Take the first function call if present
-                if "<functioncall>" in assistant_msg:
-                    start = assistant_msg.find("<functioncall>") + len("<functioncall>")
-                    end = assistant_msg.find("</functioncall>", start)
-                    if end == -1:
-                        end = len(assistant_msg)
-                    assistant_msg = assistant_msg[start:end].strip()
+        # Find first USER: message
+        for prefix in ["USER:", "USER :"]:
+            idx = chat_str.find(prefix)
+            if idx != -1:
+                start = idx + len(prefix)
+                # User message ends at next turn marker or end-of-text
+                end = len(chat_str)
+                for marker in ["ASSISTANT:", "ASSISTANT :", "<|endoftext|>", "\nFUNCTION"]:
+                    m = chat_str.find(marker, start)
+                    if m != -1 and m < end:
+                        end = m
+                user_msg = chat_str[start:end].strip()
+                break
+
+        # Find first function call in any ASSISTANT turn
+        if "<functioncall>" in chat_str:
+            fc_start = chat_str.find("<functioncall>") + len("<functioncall>")
+            fc_end = chat_str.find("<|endoftext|>", fc_start)
+            if fc_end == -1:
+                fc_end = chat_str.find("</functioncall>", fc_start)
+            if fc_end == -1:
+                fc_end = len(chat_str)
+            raw_call = chat_str[fc_start:fc_end].strip()
+            # Validate it's parseable JSON with a "name" key
+            try:
+                parsed = json.loads(raw_call)
+                if isinstance(parsed, dict) and "name" in parsed:
+                    # Convert Glaive format to our format
+                    args = parsed.get("arguments", {})
+                    if isinstance(args, str):
+                        try:
+                            args = json.loads(args)
+                        except json.JSONDecodeError:
+                            args = {}
+                    assistant_msg = json.dumps(
+                        {"function": parsed["name"], "arguments": args}
+                    )
+            except json.JSONDecodeError:
+                pass
 
         if user_msg and assistant_msg:
             sft_examples.append(
